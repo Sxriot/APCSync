@@ -1,5 +1,5 @@
 package com.example.gabrielwohlford.apcsync;
-//^^Another Commit
+//^^testing for commit
 import android.os.Build;
 import android.support.annotation.RequiresApi;
 import android.util.Log;
