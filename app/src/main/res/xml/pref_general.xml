@@ -1,0 +1,76 @@
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <PreferenceCategory
+        android:title="Connection"
+        android:key="pref_key_storage_settings">
+    <EditTextPreference
+        android:capitalize="words"
+        android:defaultValue="@string/pref_default_IP"
+        android:inputType="text"
+        android:key="example_text"
+        android:maxLines="1"
+        android:selectAllOnFocus="true"
+        android:singleLine="true"
+        android:title="IP/WebAddress"
+        android:summary="@string/pref_default_IP"/>
+
+        <EditTextPreference
+            android:capitalize="words"
+            android:defaultValue="@string/pref_default_PORT"
+            android:inputType="text"
+            android:key="Default_port"
+            android:maxLines="1"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:title="PORT"
+            android:summary="@string/pref_default_PORT"/>
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:title="Select Folders for Sync"
+        android:key="pref_key_storage_settings">
+        <CheckBoxPreference
+            android:key="pref_key_Pictures"
+            android:summary="Internal Saved Pictures"
+            android:title="Media"
+            android:defaultValue="false" />
+
+        <CheckBoxPreference
+            android:key="pref_key_auto_delete"
+            android:summary="DOWNLOADS"
+            android:title="Downloads Folder"
+            android:defaultValue="false" />
+
+        <CheckBoxPreference
+            android:key="DCIM_Camera"
+            android:summary="DCIM"
+            android:title="Camera/Videos/Images"
+            android:defaultValue="false" />
+
+    </PreferenceCategory>
+    <SwitchPreference
+        android:defaultValue="false"
+        android:key="Enable_switch"
+        android:summary="When will keep APC running in background"
+        android:title="Run as Service" />
+
+
+    <!-- NOTE: EditTextPreference accepts EditText attributes. -->
+    <!-- NOTE: EditTextPreference's summary should be set to its value by the activity code. -->
+
+
+    <!-- NOTE: Hide buttons to simplify the UI. Users can touch outside the dialog to
+         dismiss it. -->
+    <!-- NOTE: ListPreference's summary should be set to its value by the activity code. -->
+    <ListPreference
+        android:defaultValue="-1"
+        android:entries="@array/pref_example_list_titles"
+        android:entryValues="@array/pref_example_list_values"
+        android:key="example_list"
+        android:negativeButtonText="@null"
+        android:positiveButtonText="@null"
+        android:summary=""
+        android:dependency="Enable_switch"
+        android:title="AutoSync Settings"
+        android:icon="@drawable/ic_sync_black_24dp"/>
+
+</PreferenceScreen>
