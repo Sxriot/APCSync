@@ -15,7 +15,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.Socket;
 import java.nio.charset.Charset;
-//rjowl was here
+//rjowl was here...Koki was too
 /**
  * Created by seb on 7/10/17.
  */
