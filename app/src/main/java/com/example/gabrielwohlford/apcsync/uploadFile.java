@@ -235,7 +235,7 @@ class uploadFile {
             }
 //            System.out.println(builder);
             send.writeBytes(builder.toString());
-            if (bufferSentTotal >= (int)fileSize/20*FeedbackIncrementor){
+            if (bufferSentTotal >= fileSize/10*FeedbackIncrementor){
                 //eventFeedBack(bufferSentTotal+"/"+(int)fileSize+"kb");//Koki 07/27/2017 added feed back BufferSent total
                 eventFeedBack("*");
                 FeedbackIncrementor+=1;
