@@ -23,6 +23,7 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -58,6 +59,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         final TextView tvFeedback= (TextView)findViewById(R.id.FeedBack);
+        final TextView tvCurrentFile= (TextView)findViewById(R.id.CurrentFileTextView);
         tvFeedback.setMovementMethod(new ScrollingMovementMethod());
         Button btnRfresh = (Button)findViewById(R.id.refreshConnection);
         btnRfresh.setOnClickListener(new View.OnClickListener() {
@@ -112,6 +114,7 @@ public class MainActivity extends AppCompatActivity {
                                 Log.w("Done uploading this", subPath.size() + "");
                                 for (int i = 0; i < subPath.size(); i++) {
                                     try {
+
                                         up.upload(subPath.get(i), clientThread.client);
                                         Log.w("Done uploading this", subPath.get(i));
                                     } catch (Exception e) {
@@ -123,6 +126,7 @@ public class MainActivity extends AppCompatActivity {
                                 subPath = GetFileListArrayFromDirectory(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getAbsolutePath());
                                 Log.w("Done uploading this", subPath.size() + "");
                                 for (int i = 0; i < subPath.size(); i++) {
+
                                     up.upload(subPath.get(i), clientThread.client);
                                     Log.w("Done uploading this", subPath.get(i));
                                 }
@@ -150,7 +154,25 @@ public class MainActivity extends AppCompatActivity {
                 intFilesProcessedCount++;
                 tvFeedback.post(new Runnable() {
                     public void run() {
-                        tvFeedback.append("\n"+intFilesProcessedCount+" of "+ subPath.size()+" "+Message);
+                        tvFeedback.append("\n"+intFilesProcessedCount+" of "+ subPath.size()+" "+Message.substring(Message.lastIndexOf("/")));
+                    }
+                });
+            }
+
+            @Override
+            public void downloadProgress(final String Message) {
+                tvCurrentFile.post(new Runnable() {
+                    public void run() {
+                        tvCurrentFile.append(Message);
+                    }
+                });
+            }
+
+            @Override
+            public void downloadStarted(final String Message) {
+                tvCurrentFile.post(new Runnable() {
+                    public void run() {
+                        tvCurrentFile.setText(Message);
                     }
                 });
             }
@@ -166,6 +188,8 @@ public class MainActivity extends AppCompatActivity {
                 new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
                 PackageInfo.REQUESTED_PERMISSION_GRANTED);
         //-------------------------------------------------------------
+
+
         try {
             //Try to connect again on launch
             final String strServerIP = GetSharedReferenceString("example_text");

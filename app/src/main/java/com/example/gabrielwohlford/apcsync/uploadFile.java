@@ -22,6 +22,8 @@ import java.nio.charset.Charset;
 interface MyHandlerInterface
 {
     void downloadComplete(String Message);
+    void downloadProgress(String Message);
+    void downloadStarted(String Message);
 }
 
 class uploadFile {
@@ -39,6 +41,20 @@ class uploadFile {
         if(myHandler!=null)
             myHandler.downloadComplete(Message);
     }
+
+    protected void eventFeedBack(final String Message)
+    {
+        if(myHandler!=null)
+            myHandler.downloadProgress(Message);
+    }
+
+    protected void eventDownloadStarted(final String Message)
+    {
+        if(myHandler!=null)
+            myHandler.downloadStarted(Message);
+    }
+
+
 
 
     BufferedReader br = null;
@@ -116,7 +132,8 @@ class uploadFile {
             if (fileSize > 100000000) {
                 sendByChunks(filePath);
             } else{
-                readWholeFile(filePath);
+                //readWholeFile(filePath);
+                sendByChunks(filePath);
             }
 
             System.out.println("Done");
@@ -189,17 +206,24 @@ class uploadFile {
         return true;
     }
 
+
     public void sendByChunks(String file) throws IOException {
         File myFile = new File(file);
         long fileSize = myFile.length();
         int bufferToSend = 1024;
+        int bufferSentTotal = 0;//Koki 07/27/2017 added BufferSend total for feedback
+        int FeedbackIncrementor=1;
+
         int remaining = (int)fileSize;
         System.out.println("Size: "+remaining);
 
         byte[] buffer = fileSize<bufferToSend? new byte[(int)fileSize] : new byte[bufferToSend];
 
+
         FileInputStream in = new FileInputStream(file);
         int rc = in.read(buffer);
+        eventDownloadStarted(file);
+        eventFeedBack("\n"+"|");
         while(rc != -1)
         {
             StringBuilder builder = new StringBuilder();
@@ -211,11 +235,16 @@ class uploadFile {
             }
 //            System.out.println(builder);
             send.writeBytes(builder.toString());
-
+            if (bufferSentTotal >= (int)fileSize/20*FeedbackIncrementor){
+                //eventFeedBack(bufferSentTotal+"/"+(int)fileSize+"kb");//Koki 07/27/2017 added feed back BufferSent total
+                eventFeedBack("*");
+                FeedbackIncrementor+=1;
+            }
 
             // next read
             remaining-=bufferToSend;
             bufferToSend = remaining>1024? 1024:remaining;
+            bufferSentTotal+=bufferToSend;
             buffer = new byte[bufferToSend];
             System.out.println("Sending:"+bufferToSend+" Remaining: "+remaining);
             if(bufferToSend==0)
