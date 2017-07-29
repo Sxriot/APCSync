@@ -5,10 +5,13 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
+import android.graphics.Color;
+import android.os.Build;
 import android.os.Environment;
 import android.os.Looper;
 import android.preference.PreferenceManager;
 import android.provider.ContactsContract;
+import android.support.annotation.RequiresApi;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
 import android.support.v7.app.AppCompatActivity;
@@ -33,14 +36,18 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Handler;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements View.OnClickListener, MyHandlerInterface{
     ClientThread clientThread;
     uploadFile up= new uploadFile();
     int intFilesProcessedCount=0;
     public static int choice;
     List<String> subPath = new ArrayList<>();
-
+    Boolean isSyncOptionChecked = true;
     static List<String> staticLstStrFilePaths = new ArrayList<>();
+
+    // XML Objects
+    Button reconnect_btn, sync_btn;
+    TextView tvFeedback, tvCurrentFile;
 
     String GetSharedReferenceString(String ReferenceKey){
         SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
@@ -58,126 +65,15 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        final TextView tvFeedback= (TextView)findViewById(R.id.FeedBack);
-        final TextView tvCurrentFile= (TextView)findViewById(R.id.CurrentFileTextView);
+        tvFeedback= (TextView)findViewById(R.id.FeedBack);
+        tvCurrentFile= (TextView)findViewById(R.id.CurrentFileTextView);
         tvFeedback.setMovementMethod(new ScrollingMovementMethod());
-        Button btnRfresh = (Button)findViewById(R.id.refreshConnection);
-        btnRfresh.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                try {
-                    //This retrieves the saved references. "example_text" is has to be there and cannot be renamed in xml whenever i change it in xml the app crashes
-                    //  If you decide you want to make another reference object be wise as to what you name the key value.. otherwise your stuck with it
-                    //  If you can figure out how to change preferences key value without breaking app let me know. Also removing preference
-                    //  objects can break things.. so if you find how to remove them saftey let me know.
-                    String strServerIP = GetSharedReferenceString("example_text");
-                    String intPort = GetSharedReferenceString("Default_port");
-                    clientThread = new ClientThread(strServerIP, Integer.parseInt(intPort));
-                    new Thread(clientThread).start();
-                    Thread.sleep(1000);
-                    if (clientThread.isConnected()) {
-                        tvFeedback.setText("Connected To: "+strServerIP+":"+intPort);
-                    } else {
-                        tvFeedback.setText("Failed to Connect to:"+strServerIP+":"+intPort);
-                    }
-                }catch (Exception e){
-                    Log.v("Error",e.getMessage());
-                }
-            }
-        });
-
-/*
-        Button b = (Button)findViewById(R.id.Settings);
-        b.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Intent intent = new Intent(MainActivity.this,SettingsActivity.class);
-                startActivity(intent);
-            }
-        });
-*/
-
-        Button b2 = (Button)findViewById(R.id.Sync);
-        b2.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if(!clientThread.isConnected()){
-                    toast("Not Connected to Server");
-                }else {
-                    intFilesProcessedCount=0;
-                    new Thread(new Runnable() {
-                        @Override
-                        public void run() {
-                            staticLstStrFilePaths.clear();
-                            if (isPreferenceChecked("DCIM_Camera")) {
-                                subPath = GetFileListArrayFromDirectory(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM).getAbsolutePath());
-                                Log.w("Done uploading this", subPath.size() + "");
-                                for (int i = 0; i < subPath.size(); i++) {
-                                    try {
-
-                                        up.upload(subPath.get(i), clientThread.client);
-                                        Log.w("Done uploading this", subPath.get(i));
-                                    } catch (Exception e) {
-                                        Log.v("Error Loading File:" + subPath.get(i), e.getMessage());
-                                    }
-                                }
-                            }
-                            if (isPreferenceChecked("pref_key_auto_delete")) { //another bad naming i cant change without breaking it..
-                                subPath = GetFileListArrayFromDirectory(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getAbsolutePath());
-                                Log.w("Done uploading this", subPath.size() + "");
-                                for (int i = 0; i < subPath.size(); i++) {
-
-                                    up.upload(subPath.get(i), clientThread.client);
-                                    Log.w("Done uploading this", subPath.get(i));
-                                }
-                            }
-                            if (isPreferenceChecked("pref_key_Pictures")) {
-                                subPath = GetFileListArrayFromDirectory(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES).getAbsolutePath());
-                                Log.w("Done uploading this", subPath.size() + "");
-                                for (int i = 0; i < subPath.size(); i++) {
-                                    up.upload(subPath.get(i), clientThread.client);
-                                    Log.w("Done uploading this", subPath.get(i));
-                                }
-                            }
-                        }
-                    }).start();
-                }
-
-            }
-        });
+        reconnect_btn = (Button)findViewById(R.id.refreshConnection);
+        sync_btn = (Button)findViewById(R.id.Sync);
 
         //This is a custom event listener..it exist in your upload class
         //This syntax is ugly but its working.. ill explain how events work to ya ^.^
-        up.setHandlerListener(new MyHandlerInterface() {
-            @Override
-            public void downloadComplete(final String Message) {
-                intFilesProcessedCount++;
-                tvFeedback.post(new Runnable() {
-                    public void run() {
-                        tvFeedback.append("\n"+intFilesProcessedCount+" of "+ subPath.size()+" "+Message.substring(Message.lastIndexOf("/")));
-                    }
-                });
-            }
-
-            @Override
-            public void downloadProgress(final String Message) {
-                tvCurrentFile.post(new Runnable() {
-                    public void run() {
-                        tvCurrentFile.append(Message);
-                    }
-                });
-            }
-
-            @Override
-            public void downloadStarted(final String Message) {
-                tvCurrentFile.post(new Runnable() {
-                    public void run() {
-                        tvCurrentFile.setText(Message);
-                    }
-                });
-            }
-
-        });
+        up.setHandlerListener(this);
 
         //I needed to ad these for API 23 >= development------------Koki
         ActivityCompat.requestPermissions(this,
@@ -189,28 +85,104 @@ public class MainActivity extends AppCompatActivity {
                 PackageInfo.REQUESTED_PERMISSION_GRANTED);
         //-------------------------------------------------------------
 
+        connectToServer();
+        reconnect_btn.setOnClickListener(this);
+        sync_btn.setOnClickListener(this);
+    }
 
-        try {
-            //Try to connect again on launch
-            final String strServerIP = GetSharedReferenceString("example_text");
-            final String intPort = GetSharedReferenceString("Default_port");
-            clientThread = new ClientThread(strServerIP, Integer.parseInt(intPort));
-            new Thread(clientThread).start();
-            Thread.sleep(1000);
-            if (clientThread.isConnected()) {
-                tvFeedback.setText("Connected Server at: "+strServerIP+":"+intPort);
-            } else {
-                tvFeedback.setText("Failed to Connect to:"+strServerIP+":"+intPort);
+    @Override
+    public void downloadComplete(final String Message) {
+        intFilesProcessedCount++;
+        tvFeedback.post(new Runnable() {
+            public void run() {
+                tvFeedback.append("\n"+intFilesProcessedCount+" of "+ subPath.size()+" "+Message.substring(Message.lastIndexOf("/")));
             }
-        }catch (Exception e){
-            Log.v("Error",e.getMessage());
+        });
+    }
+    @Override
+    public void downloadProgress(final String Message) {
+        tvCurrentFile.post(new Runnable() {
+            public void run() {
+                tvCurrentFile.append(Message);
+            }
+        });
+    }
+    @Override
+    public void downloadStarted(final String Message) {
+        tvCurrentFile.post(new Runnable() {
+            public void run() {
+                tvCurrentFile.setText(Message);
+            }
+        });
+    }
+
+
+    @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN)
+    @Override
+    public void onClick(View v) {
+        switch (v.getId()) {
+            case R.id.refreshConnection:
+                connectToServer();
+                break;
+            case R.id.Sync:
+                if(!clientThread.isConnected()){
+                    toast("Not Connected to Server");
+                }else {
+                    intFilesProcessedCount=0;
+                    if(!isPreferenceChecked("DCIM_Camera")
+                            && !isPreferenceChecked("pref_key_downloads")
+                            && !isPreferenceChecked("pref_key_Pictures"))
+                    {
+                        toast("Please go to APCSync and check any option under \"SELECT FOLDERS FOR SYNC\"");
+                    }
+                    else {
+                        new Thread(new Runnable() {
+                            @Override
+                            public void run() {
+                                staticLstStrFilePaths.clear();
+                                if (isPreferenceChecked("DCIM_Camera")) {
+                                    subPath = GetFileListArrayFromDirectory(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM).getAbsolutePath());
+                                    Log.w("Done uploading this", subPath.size() + "");
+                                    for (int i = 0; i < subPath.size(); i++) {
+                                        try {
+                                            up.upload(subPath.get(i), clientThread.client);
+                                            Log.w("Done uploading this", subPath.get(i));
+                                            //break;
+                                        } catch (Exception e) {
+                                            Log.v("Error Loading File:" + subPath.get(i), e.getMessage());
+                                        }
+                                    }
+                                }
+                                if (isPreferenceChecked("pref_key_downloads")) { //another bad naming i cant change without breaking it..
+                                    subPath = GetFileListArrayFromDirectory(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getAbsolutePath());
+                                    Log.w("Done uploading this", subPath.size() + "");
+                                    for (int i = 0; i < subPath.size(); i++) {
+                                        up.upload(subPath.get(i), clientThread.client);
+                                        Log.w("Done uploading this", subPath.get(i));
+                                        //break;
+                                    }
+                                }
+                                if (isPreferenceChecked("pref_key_Pictures")) {
+                                    subPath = GetFileListArrayFromDirectory(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES).getAbsolutePath());
+                                    Log.w("Done uploading this", subPath.size() + "");
+                                    for (int i = 0; i < subPath.size(); i++) {
+                                        up.upload(subPath.get(i), clientThread.client);
+                                        Log.w("Done uploading this", subPath.get(i));
+                                        //break;
+                                    }
+                                }
+                            }
+                        }).start();
+                    }
+                }
+                break;
         }
     }
 
     Boolean isPreferenceChecked(String ReferenceKey){
         SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-        Boolean val = settings.getBoolean(ReferenceKey, false);
-        return val;
+        return settings.getBoolean(ReferenceKey, false);
+        //return val;
     }
 
     // Mof started here
@@ -260,6 +232,28 @@ public class MainActivity extends AppCompatActivity {
                 choice = -1;
         }
     }
+
+    private void connectToServer(){
+        try {
+            //This retrieves the saved references. "example_text" is has to be there and cannot be renamed in xml whenever i change it in xml the app crashes
+            //  If you decide you want to make another reference object be wise as to what you name the key value.. otherwise your stuck with it
+            //  If you can figure out how to change preferences key value without breaking app let me know. Also removing preference
+            //  objects can break things.. so if you find how to remove them saftey let me know.
+            String strServerIP = GetSharedReferenceString("example_text");
+            String intPort = GetSharedReferenceString("Default_port");
+            clientThread = new ClientThread(strServerIP, Integer.parseInt(intPort));
+            new Thread(clientThread).start();
+            Thread.sleep(1000);
+            if (clientThread.isConnected()) {
+                tvFeedback.setText("Connected To: "+strServerIP+":"+intPort);
+            } else {
+                tvFeedback.setText("Failed to Connect to:"+strServerIP+":"+intPort);
+            }
+        }catch (Exception e){
+            Log.v("Error",e.getMessage());
+        }
+    }
+
     // Mof ended here
 
     //Koki version of Getfiles()
@@ -304,7 +298,7 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void run() {
             try {
-                if(connected){
+                if(connected) {
                     send = new DataOutputStream(client.getOutputStream());
                     send.writeBytes("3");
                 }
