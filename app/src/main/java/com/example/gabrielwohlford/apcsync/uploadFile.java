@@ -36,127 +36,99 @@ class uploadFile {
         myHandler=listener;
     }
 
-    protected void myEventFired(final String Message)
+    private void myEventFired(final String Message)
     {
         if(myHandler!=null)
             myHandler.downloadComplete(Message);
     }
 
-    protected void eventFeedBack(final String Message)
+    private void eventFeedBack(final String Message)
     {
         if(myHandler!=null)
             myHandler.downloadProgress(Message);
     }
 
-    protected void eventDownloadStarted(final String Message)
+    private void eventDownloadStarted(final String Message)
     {
         if(myHandler!=null)
             myHandler.downloadStarted(Message);
     }
 
 
-
-
-    BufferedReader br = null;
-    FileReader fr = null;
-    DataOutputStream send;
-    DataInputStream receive;
-    FileInputStream fis = null;
-    BufferedInputStream bis = null;
-
+    private BufferedReader br = null;
+    private FileReader fr = null;
+    private DataOutputStream send;
+    private DataInputStream receive;
     void upload(String filePath, Socket clientSock) {
         try {
             receive = new DataInputStream(clientSock.getInputStream());
-/*
-            File f = new File(filePath);
-            DataInputStream dis = new DataInputStream(new FileInputStream(f)); //to read the file
-            byte[] b = new byte[(int)f.length()]; //to store the bytes
-            int l = dis.read(b); //stores the bytes in b
-            dis.close();
-*/
+            send = new DataOutputStream(clientSock.getOutputStream());
+
             File myFile = new File(filePath);
             long fileSize = myFile.length();
+/*
             fr = new FileReader(filePath);
             br = new BufferedReader(fr);
-            send = new DataOutputStream(clientSock.getOutputStream());
+*/
 //            send.writeUTF("1");
             send.writeBytes("1");
-
-            String action = "0";
-            System.out.println("Mofup-Waiting Action Data Confirmation");
-            while (action.equals("0")) {
-                try {
-                    action = String.valueOf(receive.read());
-                } catch (Exception e) {
-                    Log.w("Mofup-In catch", e.toString());
-                }
+            int action = 0;
+            System.out.println("- Mofup-WAITING Action Data Response");
+            try {
+                // http://www.asciitable.com/index/asciifull.gif
+                action = Character.getNumericValue(receive.read());
+                //System.out.println("Server says " + receive.readUTF());
+            } catch (Exception e) {
+                Log.w("Mofup-In catch", e.toString());
             }
-            System.out.println("Mofup- Action Data Confirmation Received: " + action);
-
-/*
-            String fileSize = String.valueOf((int)f.length());
-            send.writeBytes(fileSize);
-            System.out.println("Mofup-Size"+(int)f.length());
-
-            String buffer = "0";
-            System.out.println("Mofup-Waiting Buffer");
-            while(buffer.equals("0"))
-            {
-                try{
-                    buffer = String.valueOf(receive.read());
-                }catch (Exception e){
-                    Log.w("In catch", e.toString());
-                }
-            }
-            System.out.println("Mofup- Buffer Received: "+buffer);
-*/
+            System.out.println("Mofup- Action Data Confirmed: " + action);
+            if(action != 1) // means server didn't send the right acknowledgement
+                return;
 
             send.writeBytes(filePath + "NAME");
-            int namercv = -1;
-            System.out.println("Mofup-Waiting name Confirmation");
-            while (namercv == -1) {
-                try {
-                    namercv = receive.read();
-                } catch (Exception e) {
-                    Log.w("In catch", e.toString());
-                }
+            int nameRcv = -1;
+            System.out.println("Mofup-WAITING name Response");
+            try {
+                nameRcv = Character.getNumericValue(receive.read());
+//                    String d= receive.readUTF();
+//                    System.out.println("Mofup-Name STRING: " + d);
+            } catch (Exception e) {
+                Log.w("In catch", e.toString());
             }
-            System.out.println("Mofup-Name Confirmation Received: " + namercv);
+            System.out.println("Mofup-Name Confirmed: " + nameRcv);
 
-            if(namercv == 49){
+            if (nameRcv == 1) { //receiving '1' = Name sent + file exists so don't upload the file
                 System.out.println("File Exists");
-
                 myEventFired(filePath);
-                return;
             }
-            if (fileSize > 100000000) {
-                sendByChunks(filePath);
-            } else{
-                //readWholeFile(filePath);
-                sendByChunks(filePath);
-            }
+            else if (nameRcv == 0) {//receiving '0' = Name sent but file does not exist so upload the file
+                if (fileSize > 100000000) {
+                    sendByChunks(filePath);
+                } else {
+                    //readWholeFile(filePath);
+                    sendByChunks(filePath);
+                }
 
-            System.out.println("Done");
+                System.out.println("Done Uploading..");
 
-            send.writeBytes("ENDOFFILE");
-            System.out.println("ENDOFFILE Sent");
+                send.writeBytes("ENDOFFILE");
+                System.out.println("ENDOFFILE file uploaded successfully indicator Sent");
 
-            String done = "0";
-            System.out.println("Mofup-Receiving EndOfFile Confirmation");
-            while (done.equals("0")) {
+                System.out.println("Mofup-Receiving EndOfFile Response");
                 try {
-                    done = String.valueOf(receive.read());
+                    int  done = Character.getNumericValue(receive.read());
                 } catch (Exception e) {
                     Log.w("In catch", e.toString());
                 }
+                System.out.println("Mofup-EndOfFile Confirmed!!");
+                myEventFired(filePath);
             }
-            System.out.println("Mofup-EndOfFile Confirmation Received!");
-            myEventFired(filePath);
-
         } catch (IOException e) {
             Log.w("Mofup-Sending", e.toString());
             e.printStackTrace();
-        } finally {
+        }
+/*
+        finally {
             try {
                 if (br != null) {
                     br.close();
@@ -171,6 +143,7 @@ class uploadFile {
                 System.out.println("Exception");
             }
         }
+*/
     }
 
     @RequiresApi(api = Build.VERSION_CODES.KITKAT)
@@ -190,12 +163,12 @@ class uploadFile {
             }
         }
     }
-    public boolean readWholeFile(String FilePath){
+    private boolean readWholeFile(String FilePath){
         try {
             File myFile = new File(FilePath);
             byte[] mybytearray = new byte[(int) myFile.length()];
-            fis = new FileInputStream(myFile);
-            bis = new BufferedInputStream(fis);
+            FileInputStream fis = new FileInputStream(myFile);
+            BufferedInputStream bis = new BufferedInputStream(fis);
             bis.read(mybytearray, 0, mybytearray.length);
             System.out.println("Sending " + FilePath + "(" + mybytearray.length + " bytes)");
             send.write(mybytearray, 0, mybytearray.length);
@@ -206,18 +179,17 @@ class uploadFile {
         return true;
     }
 
-
-    public void sendByChunks(String file) throws IOException {
+    private void sendByChunks(String file) throws IOException {
         File myFile = new File(file);
         long fileSize = myFile.length();
-        int bufferToSend = 1024;
+        int BUFFER_TO_SEND = 1024;
         int bufferSentTotal = 0;//Koki 07/27/2017 added BufferSend total for feedback
         int FeedbackIncrementor=1;
 
         int remaining = (int)fileSize;
         System.out.println("Size: "+remaining);
 
-        byte[] buffer = fileSize<bufferToSend? new byte[(int)fileSize] : new byte[bufferToSend];
+        byte[] buffer = fileSize<BUFFER_TO_SEND? new byte[(int)fileSize] : new byte[BUFFER_TO_SEND];
 
 
         FileInputStream in = new FileInputStream(file);
@@ -242,12 +214,12 @@ class uploadFile {
             }
 
             // next read
-            remaining-=bufferToSend;
-            bufferToSend = remaining>1024? 1024:remaining;
-            bufferSentTotal+=bufferToSend;
-            buffer = new byte[bufferToSend];
-            System.out.println("Sending:"+bufferToSend+" Remaining: "+remaining);
-            if(bufferToSend==0)
+            remaining-=BUFFER_TO_SEND;
+            BUFFER_TO_SEND = remaining>1024? 1024:remaining;
+            bufferSentTotal+=BUFFER_TO_SEND;
+            buffer = new byte[BUFFER_TO_SEND];
+            System.out.println("Sending:"+BUFFER_TO_SEND+" Remaining: "+remaining);
+            if(BUFFER_TO_SEND==0)
                 break;
             rc = in.read(buffer);
         }
